@@ -1,0 +1,35 @@
+server:
+    port: 8082
+
+spring:
+    application:
+        name: kafka-consumer-service
+    kafka:
+        bootstrap-servers: ${KAFAK_BOOTSTRAP_SERVERS:localhost:9092}
+        consumer:
+            group-id: ${CONSUMER_GROUP_ID:kafka-consumer-service-group}
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            auto-offset-reset: earliest
+            # earliest: on first run (no committed offset), replay from the
+            # start of the topic — deliberate choice for a learning project
+            # so nothing gets silently missed. Revisit for production use.
+
+app:
+    kafka:
+        topic:
+            orders-events: ${ORDERS_TOPIC_NAME:orders-events}
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health, info
+    endpoint:
+        health:
+            show-details: always
+
+logging:
+    level:
+        com.kafkalearning: INFO
+        com.springframework.kafka: WARN
