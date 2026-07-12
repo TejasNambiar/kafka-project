@@ -12,7 +12,9 @@ import com.kafkalearning.producer.event.OrderEvent;
 import com.kafkalearning.producer.service.OrderEventProducer;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -23,13 +25,14 @@ public class OrderController {
     public record CreateOrderRequest(String customerId, double amount) {
     }
 
-    @PostMapping
+    @PostMapping("/createOrder")
     public ResponseEntity<OrderEvent> createOrder(@RequestBody CreateOrderRequest request) {
+        log.info("calling createOrder: " + request);
         OrderEvent event = OrderEvent.created(
                 UUID.randomUUID().toString(),
                 request.customerId(),
                 request.amount());
         orderEventProducer.publishOrderEvent(event);
-        return ResponseEntity.accepted().body(event);
+        return ResponseEntity.ok().body(event);
     }
 }

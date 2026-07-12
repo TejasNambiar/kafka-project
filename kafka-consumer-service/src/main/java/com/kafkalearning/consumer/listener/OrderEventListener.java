@@ -3,6 +3,7 @@ package com.kafkalearning.consumer.listener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafkalearning.consumer.event.OrderEvent;
 
@@ -16,7 +17,7 @@ public class OrderEventListener {
 
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "${app.kafka.topic.orders-events}", groupId = "${app.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory")
+    @KafkaListener(topics = "${app.kafka.topic.orders-events}", groupId = "${spring.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory")
     public void handleOrderEvent(ConsumerRecord<String, String> record) {
         // Taking the raw ConsumerRecord (rather than just the deserialized
         // value) so we can log partition/offset — visibility learners need
