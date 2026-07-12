@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
@@ -13,17 +14,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafkalearning.producer.event.OrderEvent;
 import com.kafkalearning.producer.service.OrderEventProducer;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderEventProducerImpl implements OrderEventProducer {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final String ordersTopic;
+
+    public OrderEventProducerImpl(
+            KafkaTemplate<String, String> kafkaTemplate,
+            ObjectMapper objectMapper,
+            @Value("${app.kafka.topic.orders-events}") String ordersTopic
+    ) {
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
+        this.ordersTopic = ordersTopic;
+    }
 
     @Override
     public void publishOrderEvent(OrderEvent event) {
@@ -37,7 +46,10 @@ public class OrderEventProducerImpl implements OrderEventProducer {
             throw new IllegalStateException("Could not serialize OrderEvent", e);
         }
 
-        ProducerRecord<String, String> record = new ProducerRecord<>(ordersTopic, event.orderId(), payload);
+        // Partition key = orderId: guarantees all events for the same order
+        // land in the same partition, preserving per-order ordering.
+        ProducerRecord<String, String> record =
+                new ProducerRecord<>(ordersTopic, event.orderId(), payload);
 
         CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(record);
 
