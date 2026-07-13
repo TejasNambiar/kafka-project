@@ -33,6 +33,6 @@ public class OrderController {
                 request.customerId(),
                 request.amount());
         orderEventProducer.publishOrderEvent(event);
-        return ResponseEntity.ok().body(event);
+        return ResponseEntity.accepted().body(event);
     }
 }
