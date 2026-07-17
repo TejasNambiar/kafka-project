@@ -1,6 +1,7 @@
 package com.kafkalearning.consumer.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.kafkalearning.consumer.service.OrderEventProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 public class OrderEventListener {
 
     private final ObjectMapper objectMapper;
+    private final OrderEventProcessor processor;
 
     /**
      * No try/catch swallowing anymore. Deserialization failures
@@ -33,9 +35,8 @@ public class OrderEventListener {
                 event.orderId(), event.status(), event.amount(),
                 record.partition(), record.offset());
 
-        // Placeholder for actual business processing. Any exception
-        // thrown here (e.g. a downstream call failure) IS retryable by
-        // default — DefaultErrorHandler retries it 3x with backoff
-        // before falling back to the DLT.
+        // Any exception thrown here is retryable by default — caught by
+        // DefaultErrorHandler, retried 3x with backoff, then DLT-routed.
+        processor.process(event);
     }
 }
