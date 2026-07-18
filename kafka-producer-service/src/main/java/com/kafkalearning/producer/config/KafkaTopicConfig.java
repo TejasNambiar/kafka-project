@@ -7,10 +7,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
 /**
- * Explicit topic provisioning. Spring's KafkaAdmin auto-detects NewTopic
- * beans and creates them on application startup (idempotently — no error
- * if the topic already exists), independent of the broker's
- * auto.create.topics.enable setting.
+ * Explicit topic provisioning for {@code orders-events}.
+ *
+ * <p>Added in Phase 3, replacing reliance on
+ * {@code auto.create.topics.enable=true} (used through Phase 1-2). Once
+ * a second topic (the DLT) entered the picture with real partition-count
+ * expectations tied to this one, implicit auto-creation stopped being
+ * safe — auto-created topics get default partition/replication settings
+ * that are rarely what's actually wanted, and a typo in a topic name
+ * would silently create a garbage topic instead of failing loudly.
+ *
+ * <p>Spring's {@code KafkaAdmin} auto-detects any {@link NewTopic} bean
+ * in the context and creates it on startup, idempotently.
  */
 @Configuration
 public class KafkaTopicConfig {
