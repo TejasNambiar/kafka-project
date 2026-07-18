@@ -31,6 +31,9 @@ class OrderEventListenerDltRoutingTest {
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
 
+    @Autowired
+    private org.springframework.kafka.config.KafkaListenerEndpointRegistry registry;
+
     // Mocking the processor here — this test is specifically about
     // "does malformed JSON get routed to DLT," not business logic. If
     // the processor gets invoked at all, that's itself a test failure
@@ -39,16 +42,22 @@ class OrderEventListenerDltRoutingTest {
     private OrderEventProcessor orderEventProcessor;
 
     @DynamicPropertySource
-    static void kafkaProperties(DynamicPropertyRegistry registry) {
+    static void kafkaProperties(DynamicPropertyRegistry registry)  {
         registry.add("app.kafka.topic.orders-events", () -> "orders-events-dlt-test");
         registry.add("app.kafka.topic.orders-events-dlt", () -> "orders-events-dlt-test.DLT");
+        registry.add("app.kafka.streams.application-id", () -> "streams-dlt-test-" + System.nanoTime());
     }
 
     @Test
     void malformedJson_isRoutedToDlt_immediately_withoutRetryOrProcessorCall() {
-        KafkaTemplate<String, String> testProducer = buildTestProducer();
+        // Wait for the @KafkaListener container to actually be assigned
+        // its partition(s) before publishing — without this, the test
+        // can send before the consumer group finishes rebalancing,
+        // causing the message to sit unconsumed past our poll timeout.
+        var container = registry.getListenerContainer("orderEventListenerContainer");
+        org.springframework.kafka.test.utils.ContainerTestUtils.waitForAssignment(container, 1);
 
-        // Send a deliberately broken payload directly to the source topic.
+        KafkaTemplate<String, String> testProducer = buildTestProducer();
         testProducer.send("orders-events-dlt-test", "order-malformed", "{this is not valid json");
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(
