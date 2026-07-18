@@ -3,31 +3,27 @@ package com.kafkalearning.consumer.event;
 import java.time.Instant;
 
 /**
- * Domain event representing an order lifecycle action, published to the
- * {@code orders-events} Kafka topic.
+ * Mirror of {@code com.kafkalearning.producer.event.OrderEvent}.
  *
- * <p>Modeled as an immutable {@code record} deliberately: once an event
- * is created and handed to the producer, nothing should mutate it —
- * doing so would risk a mismatch between what's held in memory and what
- * was actually serialized and sent to the broker.
+ * <p>Deliberately duplicated rather than shared (see ADR-001) — at this
+ * project's current scale, a shared module was judged not worth the
+ * added build complexity. <b>This is the highest-risk drift point in the
+ * codebase:</b> nothing at compile time enforces that this shape stays
+ * in sync with the producer's copy. If the producer's {@code OrderEvent}
+ * ever changes, this file must be updated by hand, in a separate module,
+ * with no compiler error to catch a mismatch.
  *
- * <p>{@link #timestamp} is an {@link Instant} (UTC, timezone-independent)
- * rather than {@code LocalDateTime}, since this event crosses process and
- * potentially machine/timezone boundaries between the producer and
- * consumer services.
+ * <p>Unlike the producer's copy, this record has no factory method —
+ * the consumer only ever deserializes events that already exist on the
+ * wire; it has no business minting new ones, so a {@code created(...)}-style
+ * factory here would misrepresent this module's role.
  *
- * <p><b>Note:</b> this record is intentionally duplicated in
- * {@code kafka-consumer-service} rather than extracted into a shared
- * module (see ADR-001). If this shape changes, the consumer-side copy
- * must be updated in lockstep — there is currently no compiler-enforced
- * contract between the two.
- *
- * @param orderId    unique identifier for the order; also used as the
- *                   Kafka partition key to preserve per-order ordering
+ * @param orderId    unique identifier for the order; matches the Kafka
+ *                   partition key used by the producer
  * @param customerId identifier of the customer who placed the order
  * @param status     lifecycle status of the order (e.g. {@code CREATED})
  * @param amount     order total
- * @param timestamp  UTC instant the event was created
+ * @param timestamp  UTC instant the event was originally created
  */
 public record OrderEvent(
         String orderId,
@@ -37,19 +33,4 @@ public record OrderEvent(
         Instant timestamp
 
 ) {
-    /**
-     * Creates a new {@code OrderEvent} representing an order just placed.
-     * Centralizes the business rule that a freshly created order always
-     * has status {@code CREATED} and a timestamp of "now" — callers don't
-     * construct that state by hand.
-     *
-     * @param orderId    unique identifier for the new order
-     * @param customerId identifier of the customer placing the order
-     * @param amount     order total
-     * @return a new {@code OrderEvent} with status {@code CREATED} and the
-     *         current UTC instant
-     */
-    public static OrderEvent created(String orderId, String customerId, double amount) {
-        return new OrderEvent(orderId, customerId, "CREATED", amount, Instant.now());
-    }
 }
