@@ -19,6 +19,7 @@ app:
     kafka:
         topic:
             orders-events: ${ORDERS_TOPIC_NAME:orders-events}
+            orders-events-dlt: ${ORDERS_DLT_TOPIC_NAME:orders-events.DLT}
 
 management:
     endpoints:

@@ -9,6 +9,13 @@ spring:
         producer:
             key-serializer: org.apache.kafka.common.serialization.StringSerializer
             value-serializer: org.apache.kafka.common.serialization.StringSerializer
+            acks: all
+            properties:
+                enable.idempotence: true
+                max.in.flight.requests.per.connection: 5
+                # retries defaults to Integer.MAX_VALUE once idempotence is on;
+                # delivery.timeout.ms is the real ceiling on total retry duration.
+                delivery.timeout.ms: 120000
 
 app:
     kafka:
