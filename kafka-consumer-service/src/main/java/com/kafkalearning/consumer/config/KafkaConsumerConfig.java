@@ -16,10 +16,21 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.ExponentialBackOff;
 
 /**
- * Explicit ConsumerFactory/ListenerContainerFactory beans built from
- * Boot's auto-detected KafkaProperties. As with the producer side, this
- * is declared explicitly (rather than relying on implicit auto-config)
- * to give us a visible seam for Phase 3's error-handling configuration.
+ * Consumer/listener-container wiring, including Phase 3's retry/backoff
+ * and dead-letter-topic configuration.
+ *
+ * <p><b>Historical bug, worth knowing about:</b> {@link #errorHandler}
+ * and {@link #kafkaListenerContainerFactory} were originally two
+ * independent beans that were never actually connected —
+ * {@code setCommonErrorHandler()} was missing from the factory method.
+ * The error handler bean existed, was fully configured, and was simply
+ * never attached to anything. Spring did not error; it silently fell
+ * back to its own internal default handler with no DLT recoverer. This
+ * is why {@link #kafkaListenerContainerFactory} explicitly takes
+ * {@link org.springframework.kafka.listener.DefaultErrorHandler} as a
+ * parameter and calls {@code setCommonErrorHandler} — that wiring is the
+ * fix, and its absence is the kind of bug that compiles cleanly and
+ * looks correct in review.
  */
 @Configuration
 public class KafkaConsumerConfig {
@@ -29,6 +40,12 @@ public class KafkaConsumerConfig {
         return new DefaultKafkaConsumerFactory<>(kafkaProperties.buildConsumerProperties());
     }
 
+    /**
+     * Explicitly wires {@code errorHandler} into the container factory —
+     * see the class-level doc above for why this line specifically is
+     * the fix for a real bug where retry/DLT config was defined but
+     * silently inert.
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
             ConsumerFactory<String, String> consumerFactory,
@@ -40,10 +57,10 @@ public class KafkaConsumerConfig {
     }
 
     /**
-     * Routes every failed record to the same DLT topic/partition
-     * mapping regardless of the original partition — simplest
-     * strategy; per-partition DLT topics are possible but add
-     * complexity we don't need at this scale.
+     * Routes every failed record to the DLT topic, mapping the original
+     * partition to a DLT partition via {@code partition % 3} — a simple,
+     * deterministic strategy that preserves some partition locality
+     * without needing a separate DLT topic per source partition.
      */
     @Bean
     public DeadLetterPublishingRecoverer deadLetterPublishingRecoverer(
@@ -55,6 +72,14 @@ public class KafkaConsumerConfig {
                 );
     }
 
+    /**
+     * 3 retry attempts (1s, 2s, 4s, capped at 10s, 15s max elapsed) for
+     * transient failures. {@link JsonProcessingException},
+     * {@link SerializationException}, and {@link IllegalArgumentException}
+     * are classified non-retryable — deserialization/format errors can
+     * never succeed on retry, so these skip straight to the DLT instead
+     * of burning all 3 attempts pointlessly.
+     */
     @Bean
     public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer recoverer){
         // 3 retry attempts: 1s, 2s, 4s delays (capped at 10s max interval).
