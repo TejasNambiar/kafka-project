@@ -20,6 +20,9 @@ app:
         topic:
             orders-events: ${ORDERS_TOPIC_NAME:orders-events}
             orders-events-dlt: ${ORDERS_DLT_TOPIC_NAME:orders-events.DLT}
+            high-value-orders: ${HIGH_VALUE_ORDERS_TOPIC_NAME:high-value-orders}
+        streams:
+            application-id: ${STREAMS_APP_ID:kafka-consumer-service-streams}
 
 management:
     endpoints:
@@ -32,5 +35,6 @@ management:
 
 logging:
     level:
-        com.kafkalearning: INFO
-        com.springframework.kafka: WARN
+        org.springframework.kafka: DEBUG
+        org.apache.kafka.clients.consumer: INFO
+        org.apache.kafka.clients.producer: INFO
