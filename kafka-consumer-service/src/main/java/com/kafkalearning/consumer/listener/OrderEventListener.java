@@ -26,7 +26,12 @@ public class OrderEventListener {
      * JsonProcessingException as non-retryable and routes it
      * straight to the DLT (see KafkaConsumerConfig).
      */
-    @KafkaListener(topics = "${app.kafka.topic.orders-events}", groupId = "${spring.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory")
+    @KafkaListener(
+            id = "orderEventListenerContainer",
+            topics = "${app.kafka.topic.orders-events}",
+            groupId = "${spring.kafka.consumer.group-id}",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
     public void handleOrderEvent(ConsumerRecord<String, String> record) throws JsonProcessingException {
 
         OrderEvent event = objectMapper.readValue(record.value(), OrderEvent.class);

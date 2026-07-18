@@ -20,6 +20,14 @@ public class KafkaTopicConfig {
                 .partitions(3) // matches source topic partition count
                 .replicas(1) // single-broker local dev; never 1 in production
                 .build();
+    }
 
+    @Bean
+    public NewTopic highValueOrdersTopic(
+            @Value("${app.kafka.topic.high-value-orders}") String topicName) {
+        return TopicBuilder.name(topicName)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 }
